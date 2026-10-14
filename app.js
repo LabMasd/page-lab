@@ -323,23 +323,67 @@ const slider = $('slider');
 slider.addEventListener('input', () => { tween = null; pos = target = parseFloat(slider.value); update(); });
 slider.addEventListener('change', () => { goTo(pos); slider.blur(); });
 
-// click a side of the book to turn
-let down = null;
-renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
-renderer.domElement.addEventListener('pointerup', (e) => {
-  if (!down || !book) return;
-  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-  if (moved < 5 && performance.now() - down.t < 450) {
-    const r = renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    const rc = new THREE.Raycaster(); rc.setFromCamera(ndc, camera);
-    const hit = new THREE.Vector3();
-    if (rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit)) {
-      step(hit.x > book.group.position.x ? 1 : -1);
-    }
-  }
-  down = null;
+// grab a page and drag to turn it; a plain click turns toward that side
+const dom = renderer.domElement;
+const rc = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function groundHit(e) {
+  const r = dom.getBoundingClientRect();
+  camera.updateMatrixWorld();
+  rc.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const p = new THREE.Vector3();
+  return rc.ray.intersectPlane(plane, p) ? p : null;
+}
+function onBook(p) {
+  if (!book || !p) return false;
+  const sx = book.group.position.x;
+  return Math.abs(p.z) <= book.H / 2 && p.x >= sx - book.W && p.x <= sx + book.W;
+}
+let drag = null;
+dom.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || !book) return;
+  const p = groundHit(e);
+  drag = { x: e.clientX, y: e.clientY, t: performance.now(), onBook: onBook(p), hit: p, mode: null, start: Math.round(tween ? target : pos) };
+  if (drag.onBook) { controls.enabled = false; dom.setPointerCapture(e.pointerId); }
 });
+dom.addEventListener('pointermove', (e) => {
+  if (!book) return;
+  if (!drag) { dom.style.cursor = onBook(groundHit(e)) ? 'grab' : 'default'; return; }
+  if (!drag.onBook) return;
+  const moved = Math.hypot(e.clientX - drag.x, e.clientY - drag.y);
+  if (!drag.mode && moved > 5) {
+    const forward = drag.hit.x > book.group.position.x;
+    if ((forward && drag.start >= book.N) || (!forward && drag.start <= 0)) { drag.mode = 'none'; }
+    else { drag.mode = forward ? 'fwd' : 'back'; tween = null; pos = target = drag.start; dom.style.cursor = 'grabbing'; }
+  }
+  if (drag.mode === 'fwd' || drag.mode === 'back') {
+    const p = groundHit(e); if (!p) return;
+    const dx = (p.x - drag.hit.x) / (book.W * 0.9);
+    const prog = Math.min(1, Math.max(0, drag.mode === 'fwd' ? -dx : dx));
+    drag.prog = prog;
+    pos = drag.mode === 'fwd' ? drag.start + prog : drag.start - prog;
+    update();
+  }
+});
+function endDrag(e) {
+  if (!drag) return;
+  controls.enabled = true;
+  const d = drag; drag = null;
+  dom.style.cursor = 'default';
+  if (!book) return;
+  const moved = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+  if (d.mode === 'fwd' || d.mode === 'back') {
+    const commit = d.prog > 0.28;
+    const dest = commit ? d.start + (d.mode === 'fwd' ? 1 : -1) : d.start;
+    target = NaN;
+    const dist = Math.abs(dest - pos);
+    target = dest;
+    tween = { from: pos, to: dest, t0: performance.now(), dur: (0.35 + 0.5 * dist) * 1000 };
+  } else if (d.onBook && moved < 5 && performance.now() - d.t < 450) {
+    step(d.hit.x > book.group.position.x ? 1 : -1);
+  }
+}
+dom.addEventListener('pointerup', endDrag);
+dom.addEventListener('pointercancel', endDrag);
 
 /* ---------- camera presets ---------- */
 let camTween = null;
