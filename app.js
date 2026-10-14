@@ -232,7 +232,7 @@ function update() {
       const zn = j / ROWS, zz = 2 * zn - 1;
       const thr = th + tw * zz;
       const cr = c * (1 + 0.7 * zz);
-      let x = 0, y = y0 - dip * dipW;
+      let x = 0, y = y0 - dip; // root stays pinned in the gutter for the whole turn
       for (let k = 0; k <= SEG; k++) {
         const o = (j * (SEG + 1) + k) * 3;
         arr[o] = x; arr[o + 1] = y; arr[o + 2] = -H / 2 + zn * H;
