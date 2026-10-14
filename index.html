@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>page.lab</title>
+<script type="importmap">
+{"imports":{
+  "three":"./vendor/three/build/three.module.js",
+  "three/addons/":"./vendor/three/examples/jsm/",
+  "pdfjs":"./vendor/pdfjs/pdf.mjs"
+}}
+</script>
+<style>
+:root{
+  --bg:#f5f5f7; --panel:#ffffffd9; --text:#1d1d1f; --muted:#6e6e73; --line:#00000014;
+  --accent:#0071e3; --field:#00000009;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#161618; --panel:#232326d9; --text:#f5f5f7; --muted:#98989d; --line:#ffffff1c; --accent:#2997ff; --field:#ffffff10; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:13px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;overflow:hidden}
+#app{display:grid;grid-template-columns:232px 1fr;height:100%}
+aside{padding:18px 16px;border-right:1px solid var(--line);background:var(--panel);
+  backdrop-filter:blur(20px);display:flex;flex-direction:column;gap:16px;overflow:auto}
+h1{font-size:15px;font-weight:600;margin:0}
+h1 span{color:var(--muted);font-weight:400}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+select,button{font:inherit;color:var(--text);background:var(--field);border:1px solid var(--line);
+  border-radius:8px;padding:7px 10px;width:100%}
+select{appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 52%,calc(100% - 10px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+button{cursor:pointer;text-align:center}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.file{font-size:12px;color:var(--muted);margin-top:6px;word-break:break-all}
+.hint{margin-top:auto;font-size:11px;color:var(--muted);line-height:1.6}
+main{position:relative;min-width:0}
+#view{position:absolute;inset:0}
+canvas{display:block;outline:none}
+#view::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.16) 100%)}
+#nav{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+  background:var(--panel);backdrop-filter:blur(20px);border:1px solid var(--line);border-radius:14px;padding:8px 12px;
+  width:min(560px,calc(100% - 32px))}
+#nav button{width:34px;height:30px;padding:0;font-size:16px;flex:none}
+#nav input{flex:1;accent-color:var(--accent)}
+#label{min-width:104px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
+#busy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:var(--bg);opacity:.86;font-size:14px;z-index:5}
+#drop{position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:16px;display:none;
+  align-items:center;justify-content:center;font-size:16px;background:#0071e314;z-index:6;pointer-events:none}
+body.client #app{grid-template-columns:1fr}
+body.client aside{display:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <h1>page<span>.lab</span></h1>
+    <div>
+      <button class="primary" id="open">Open PDF or images…</button>
+      <input type="file" id="file" accept="application/pdf,image/*" multiple hidden>
+      <div class="file" id="fileinfo">Sample booklet</div>
+    </div>
+    <div><label for="pages">Pages are</label>
+      <select id="pages"><option value="single">Single pages</option><option value="spreads">Spreads (split in half)</option></select></div>
+    <div><label for="paper">Paper finish</label>
+      <select id="paper"><option value="matte">Uncoated</option><option value="silk">Silk</option><option value="gloss">Gloss</option></select></div>
+    <div><label for="gsm">Stock weight</label>
+      <select id="gsm"><option value="80">80 gsm, flimsy</option><option value="130" selected>130 gsm</option><option value="170">170 gsm</option><option value="250">250 gsm, stiff</option></select></div>
+    <div><label for="bg">Surface</label>
+      <select id="bg"><option value="light">Studio light</option><option value="dark">Studio dark</option><option value="warm">Desk</option></select></div>
+    <div><label for="cam">View</label>
+      <select id="cam"><option value="angled">Angled</option><option value="top">Top down</option><option value="close">Close up</option></select></div>
+    <div><button id="save">Save still (PNG)</button></div>
+    <div class="hint">Click a side of the book to turn · ← → keys<br>Drag to orbit · scroll to zoom<br>Drop a PDF anywhere</div>
+  </aside>
+  <main>
+    <div id="view"></div>
+    <div id="nav">
+      <button id="prev" title="Previous">‹</button>
+      <input type="range" id="slider" min="0" max="1" step="0.001" value="0">
+      <button id="next" title="Next">›</button>
+      <div id="label"></div>
+    </div>
+    <div id="busy">Rendering pages…</div>
+    <div id="drop">Drop to preview</div>
+  </main>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
